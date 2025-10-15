@@ -16,10 +16,10 @@ error_handling:
 
 network:
   http_timeout:
-    connect: 10.0
-    read: 300.0
-    write: 300.0
-    pool: 30.0
+    connect: 300.0
+    read: 6000.0
+    write: 6000.0
+    pool: 600.0
 
 # API個別の上書き（必要に応じて）
 openai:

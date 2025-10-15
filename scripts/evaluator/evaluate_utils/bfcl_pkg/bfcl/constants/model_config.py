@@ -33,7 +33,7 @@ from ..model_handler.api_inference.qwen import (
     QwenAPIHandler,
     QwenIntlAPIHandler,
 )
-from ..model_handler.api_inference.upstage import UpstageHandler
+from ..model_handler.api_inference.upstage_syn_pro import UpstageSynProHandler
 from ..model_handler.api_inference.writer import WriterHandler
 from ..model_handler.api_inference.yi import YiHandler
 # from ..model_handler.local_inference.arch import ArchHandler
@@ -1241,6 +1241,18 @@ api_inference_model_map = {
         is_fc_model=False,
         underscore_to_dot=False,
     ),
+    "syn-pro-FC": ModelConfig(
+        model_name="syn-pro-FC",
+        display_name="Syn Pro (FC)",
+        url="http://solar-pro-vllm-cluster-alb-3-1453891318.us-east-2.elb.amazonaws.com/v1",
+        org="Upstage",
+        license="Proprietary",
+        model_handler=UpstageSynProHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=True, ### ご注意ください
+),
 }
 
 # Inference through local hosting

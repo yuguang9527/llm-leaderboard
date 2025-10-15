@@ -94,7 +94,6 @@ services:
       - ./blend_run_configs:/workspace/blend_run_configs:ro
       - ./chat_templates:/workspace/chat_templates:ro
       - ${LOCAL_MODEL_PATH:-/tmp/empty}:/workspace/models:ro
-      - ./blend_run_configs:/workspace/blend_run_configs:ro
       
       # Docker socket mount for SWE-bench evaluation
       - /var/run/docker.sock:/var/run/docker.sock
