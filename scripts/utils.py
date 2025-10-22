@@ -141,7 +141,7 @@ def wait_for_gpu_ready(timeout: int = 30):
 
     raise TimeoutError(f"GPU did not become ready within {timeout} seconds")
 
-@retry(stop=stop_after_attempt(10), wait=wait_fixed(10))
+@retry(stop=stop_after_attempt(100), wait=wait_fixed(100))
 def read_wandb_table(
     table_name: str,
     run: object,

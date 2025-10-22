@@ -16,6 +16,7 @@ from ..utils import (
     system_prompt_pre_processing_chat_model,
 )
 from openai import OpenAI, RateLimitError
+from config_singleton import WandbConfigSingleton
 
 
 class UpstageSynProHandler(BaseHandler):
@@ -29,6 +30,20 @@ class UpstageSynProHandler(BaseHandler):
             api_key=os.getenv("OPENAI_COMPATIBLE_API_KEY"),
             base_url="http://solar-pro-vllm-cluster-alb-3-1453891318.us-east-2.elb.amazonaws.com/v1"
         )
+        
+        # 設定ファイルからchat_template_kwargsを取得
+        instance = WandbConfigSingleton.get_instance()
+        cfg = instance.config
+        self.chat_template_kwargs = None
+        
+        # generator.chat_template_kwargsから取得
+        try:
+            if hasattr(cfg, 'generator') and hasattr(cfg.generator, 'chat_template_kwargs'):
+                from omegaconf import OmegaConf
+                # DictConfigをPythonの辞書に変換
+                self.chat_template_kwargs = OmegaConf.to_container(cfg.generator.chat_template_kwargs)
+        except Exception:
+            pass
 
     def decode_ast(self, result, language="Python"):
         if "FC" in self.model_name or self.is_fc_model:
@@ -116,21 +131,28 @@ class UpstageSynProHandler(BaseHandler):
         tools = inference_data["tools"]
         inference_data["inference_input_log"] = {"message": repr(message), "tools": tools}
 
+        # 基本パラメータ
+        base_params = {
+            "messages": message,
+            "model": self.model_name.replace("-FC", ""),
+            "temperature": self.temperature,
+        }
+        
+        # chat_template_kwargsが設定されている場合は追加
+        if self.chat_template_kwargs:
+            base_params["extra_body"] = {
+                "chat_template_kwargs": self.chat_template_kwargs
+            }
+        
         if len(tools) > 0:
             # Upstage Solar models support temperature parameter
-            return self.generate_with_backoff(
-                messages=message,
-                model=self.model_name.replace("-FC", ""),
-                temperature=self.temperature,
-                tools=tools,
-                tool_choice="auto"  # Upstage supports tool_choice parameter
-            )
+            base_params.update({
+                "tools": tools,
+                "tool_choice": "auto"  # Upstage supports tool_choice parameter
+            })
+            return self.generate_with_backoff(**base_params)
         else:
-            return self.generate_with_backoff(
-                messages=message,
-                model=self.model_name.replace("-FC", ""),
-                temperature=self.temperature,
-            )
+            return self.generate_with_backoff(**base_params)
 
     def _pre_query_processing_FC(self, inference_data: dict, test_entry: dict) -> dict:
         inference_data["message"] = []
@@ -214,12 +236,21 @@ class UpstageSynProHandler(BaseHandler):
     def _query_prompting(self, inference_data: dict):
         inference_data["inference_input_log"] = {"message": repr(inference_data["message"])}
 
+        # 基本パラメータ
+        base_params = {
+            "messages": inference_data["message"],
+            "model": self.model_name,
+            "temperature": self.temperature,
+        }
+        
+        # chat_template_kwargsが設定されている場合は追加
+        if self.chat_template_kwargs:
+            base_params["extra_body"] = {
+                "chat_template_kwargs": self.chat_template_kwargs
+            }
+        
         # Upstage Solar models support temperature parameter
-        return self.generate_with_backoff(
-            messages=inference_data["message"],
-            model=self.model_name,
-            temperature=self.temperature,
-        )
+        return self.generate_with_backoff(**base_params)
 
     def _pre_query_processing_prompting(self, test_entry: dict) -> dict:
         functions: list = test_entry["function"]

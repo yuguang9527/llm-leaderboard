@@ -1,10 +1,18 @@
 
 wandb:
-  run_name: "upstage/solar-pro" # name of model
+  run_name: "upstage-karakuri/syn-pro" # name of model
 
 api: "openai-compatible"
 base_url: "http://solar-pro-vllm-cluster-alb-3-1453891318.us-east-2.elb.amazonaws.com/v1"  # 外部APIのエンドポイント。値はOpenrouterを例としている
-batch_size: 32
+batch_size: 32  # バッチサイズを小さくしてタイムアウトを軽減
+
+# Ultra高タイムアウト設定
+network:
+  http_timeout:
+    connect: 600.0    # 10分
+    read: 18000.0     # 5時間
+    write: 18000.0    # 5時間
+    pool: 1200.0      # 20分
 
 model:
   use_wandb_artifacts: false
@@ -16,9 +24,8 @@ model:
 
 
 generator:
-  extra_body:
-    chat_template_kwargs:
-      enable_thinking: false  ### !!!
+  chat_template_kwargs:
+    enable_thinking: false  ### !!! Reasoning無効化（正しい設定）
   max_tokens: 32768 
   temperature: 0.1
   top_p: 1

@@ -327,6 +327,20 @@ class OpenAIClient:
                 # omegaconfが利用できない場合やDictConfigでない場合はそのまま使用
                 params["extra_body"] = all_kwargs["extra_body"]
         
+        # chat_template_kwargsをextra_bodyに追加
+        if "chat_template_kwargs" in all_kwargs:
+            if "extra_body" not in params:
+                params["extra_body"] = {}
+            # DictConfigを通常の辞書に変換
+            try:
+                import omegaconf
+                if isinstance(all_kwargs["chat_template_kwargs"], omegaconf.DictConfig):
+                    params["extra_body"]["chat_template_kwargs"] = omegaconf.OmegaConf.to_container(all_kwargs["chat_template_kwargs"])
+                else:
+                    params["extra_body"]["chat_template_kwargs"] = all_kwargs["chat_template_kwargs"]
+            except (ImportError, AttributeError):
+                params["extra_body"]["chat_template_kwargs"] = all_kwargs["chat_template_kwargs"]
+        
         # 後方互換性のためのレガシーパラメータサポート
         if "include_reasoning" in all_kwargs:
             if "extra_body" not in params:
@@ -411,6 +425,20 @@ class OpenAIClient:
             except (ImportError, AttributeError):
                 # omegaconfが利用できない場合やDictConfigでない場合はそのまま使用
                 params["extra_body"] = all_kwargs["extra_body"]
+        
+        # chat_template_kwargsをextra_bodyに追加
+        if "chat_template_kwargs" in all_kwargs:
+            if "extra_body" not in params:
+                params["extra_body"] = {}
+            # DictConfigを通常の辞書に変換
+            try:
+                import omegaconf
+                if isinstance(all_kwargs["chat_template_kwargs"], omegaconf.DictConfig):
+                    params["extra_body"]["chat_template_kwargs"] = omegaconf.OmegaConf.to_container(all_kwargs["chat_template_kwargs"])
+                else:
+                    params["extra_body"]["chat_template_kwargs"] = all_kwargs["chat_template_kwargs"]
+            except (ImportError, AttributeError):
+                params["extra_body"]["chat_template_kwargs"] = all_kwargs["chat_template_kwargs"]
         
         # 後方互換性のためのレガシーパラメータサポート
         if "include_reasoning" in all_kwargs:
@@ -1338,6 +1366,7 @@ def get_llm_inference_engine() -> BaseLLMClient:
         )
         # 後方互換性のため、openai-compatibleと同じ処理
         api_type = "openai-compatible"
+        
         # fall through to openai-compatible handling
 
     if api_type == "openai-compatible":
