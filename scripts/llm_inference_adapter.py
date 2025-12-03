@@ -552,9 +552,11 @@ class OpenAIResponsesClient(BaseLLMClient):
         """非同期版のinvoke"""
         all_kwargs = {**self.kwargs, **kwargs}
         # generator.extra_body.reasoning をトップレベルreasoningに昇格
+        # OmegaConf.DictConfig は isinstance(..., dict) で False になるため、
+        # hasattr で .get メソッドの存在をチェックする
         try:
             extra_body = all_kwargs.get('extra_body')
-            if extra_body and isinstance(extra_body, dict) and 'reasoning' in extra_body:
+            if extra_body and hasattr(extra_body, 'get') and 'reasoning' in extra_body:
                 all_kwargs['reasoning'] = extra_body['reasoning']
         except Exception:
             pass

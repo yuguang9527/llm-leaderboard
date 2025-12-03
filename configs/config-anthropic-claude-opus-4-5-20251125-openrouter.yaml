@@ -1,19 +1,19 @@
 wandb:
-  run_name: anthropic/claude-opus-4-1-20250805
+  run_name: "anthropic/claude-opus-4.5-20251125: extended-thinking"
 api: openai-compatible # openai, anthropic, google,..
 base_url: https://openrouter.ai/api/v1
 batch_size: 32
 model:
-  pretrained_model_name_or_path: anthropic/claude-opus-4.1
+  pretrained_model_name_or_path: anthropic/claude-opus-4.5
   bfcl_model_id: OpenRouter-FC
   base_model: "unknown"
   size_category: api
   size: null
-  release_date: 8/6/2025
+  release_date: 11/25/2025
 
 generator:
-  max_tokens: 180000
   parallel_tool_calls: true
+  max_tokens: 180000
   extra_body:
     reasoning:
       effort: high

@@ -72,6 +72,8 @@ These unified handlers eliminate the need to configure individual model-specific
 | Gemini-2.5-Flash-Lite-Preview-06-17            | Prompt           | Google         | gemini-2.5-flash-lite-preview-06-17                         |
 | Gemini-2.5-Pro                                 | Function Calling | Google         | gemini-2.5-pro-FC                                           |
 | Gemini-2.5-Pro                                 | Prompt           | Google         | gemini-2.5-pro                                              |
+| Gemini-3-Pro-Preview                           | Function Calling | Google         | gemini-3-pro-preview-FC                                     |
+| Gemini-3-Pro-Preview                           | Prompt           | Google         | gemini-3-pro-preview                                        |
 | Gemini (Generic Handler)                       | Function Calling | Google         | gemini-FC                                                   |
 | Gemini-2.5-Pro-Exp-05-06                       | Function Calling | Google         | gemini-2.5-pro-preview-05-06-FC                                 |
 | Gemini-2.5-Pro-Exp-05-06                       | Prompt           | Google         | gemini-2.5-pro-preview-05-06                                    |

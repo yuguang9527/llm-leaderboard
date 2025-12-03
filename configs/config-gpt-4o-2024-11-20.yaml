@@ -11,7 +11,24 @@ model:
   release_date: 11/20/2024 # format: MM/DD/YYYY
 
 swebench:
-  background_eval: true
+  artifacts_path: 'horangi/horangi4-dataset/swebench_verified_official_80:v2' 
+  dataset_dir: '.'
+  background_eval: false
   api_server:
     enabled: true
     endpoint: 'https://api.nejumi-swebench.org'
+
+run:
+  bfcl: false
+  swebench: true
+  mtbench: false
+  jbbq: false
+  toxicity: false
+  jtruthfulqa: false
+  hle: false
+  hallulens: false
+  arc_agi: false
+  m_ifeval: false
+  jaster: false
+  jmmlu_robustness: false # if this is set as true, jaster should set as true  
+  aggregate: false

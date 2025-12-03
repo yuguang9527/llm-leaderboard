@@ -41,11 +41,15 @@ class OpenAIResponsesHandler(BaseHandler):
             # generator.extra_body.reasoning を昇格して保持しておく
             try:
                 gen_cfg = getattr(cfg, "generator", {})
+                # OmegaConfオブジェクトの場合はコンテナ（dict）に変換する
+                if hasattr(OmegaConf, "to_container") and not isinstance(gen_cfg, dict):
+                    gen_cfg = OmegaConf.to_container(gen_cfg)
+
                 extra_body = gen_cfg.get("extra_body", {}) if isinstance(gen_cfg, dict) else {}
                 reasoning = extra_body.get("reasoning") if isinstance(extra_body, dict) else None
+                
                 if reasoning is not None:
-                    # OmegaConf -> Python dict への変換に対応
-                    self.reasoning_param = OmegaConf.to_container(reasoning) if hasattr(OmegaConf, "to_container") else reasoning
+                    self.reasoning_param = reasoning
                 else:
                     self.reasoning_param = None
             except Exception:

@@ -4,7 +4,7 @@ from typing import Optional
 from ..model_handler.api_inference.claude import ClaudeHandler
 from ..model_handler.api_inference.cohere import CohereHandler
 from ..model_handler.api_inference.databricks import DatabricksHandler
-from ..model_handler.api_inference.deepseek import DeepSeekAPIHandler
+from ..model_handler.api_inference.deepseek import DeepSeekAPIHandler, DeepSeekV32APIHandler
 #from ..model_handler.api_inference.dm_cito import DMCitoHandler
 from ..model_handler.api_inference.fireworks import FireworksHandler
 from ..model_handler.api_inference.functionary import FunctionaryHandler
@@ -194,6 +194,30 @@ api_inference_model_map = {
         model_handler=DeepSeekAPIHandler,
         input_price=None,
         output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=True,
+    ),
+    "DeepSeek-V3.2-FC": ModelConfig(
+        model_name="DeepSeek-V3.2",
+        display_name="DeepSeek-V3.2 (FC, Thinking)",
+        url="https://api-docs.deepseek.com/",
+        org="DeepSeek",
+        license="DeepSeek License",
+        model_handler=DeepSeekV32APIHandler,
+        input_price=0.28,
+        output_price=0.42,
+        is_fc_model=True,
+        underscore_to_dot=True,
+    ),
+    "DeepSeek-V3.2-NonThinking-FC": ModelConfig(
+        model_name="DeepSeek-V3.2-NonThinking",
+        display_name="DeepSeek-V3.2 (FC, Non-Thinking)",
+        url="https://api-docs.deepseek.com/",
+        org="DeepSeek",
+        license="DeepSeek License",
+        model_handler=DeepSeekAPIHandler,
+        input_price=0.28,
+        output_price=0.42,
         is_fc_model=True,
         underscore_to_dot=True,
     ),
@@ -752,7 +776,7 @@ api_inference_model_map = {
     "gemini-2.5-pro-FC": ModelConfig(
         model_name="gemini-2.5-pro-FC",
         display_name="Gemini-2.5-Pro (FC)",
-        url="https://deepmind.google/technologies/gemini/pro/",
+        url="https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro",
         org="Google",
         license="Proprietary",
         model_handler=GeminiHandler,
@@ -764,12 +788,37 @@ api_inference_model_map = {
     "gemini-2.5-pro": ModelConfig(
         model_name="gemini-2.5-pro",
         display_name="Gemini-2.5-Pro (Prompt)",
-        url="https://deepmind.google/technologies/gemini/pro/",
+        url="https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro",
         org="Google",
         license="Proprietary",
         model_handler=GeminiHandler,
         input_price=1.5,
         output_price=10,
+        is_fc_model=False,
+        underscore_to_dot=False,
+    ),
+    "gemini-3-pro-preview-FC": ModelConfig(
+        model_name="gemini-3-pro-preview-FC",
+        display_name="Gemini-3-Pro-Preview (FC)",
+        url="https://ai.google.dev/gemini-api/docs/models/gemini-3-pro",
+        org="Google",
+        license="Proprietary",
+        model_handler=GeminiHandler,
+        # 公式ドキュメントの <200k tokens 帯の価格に合わせた目安
+        input_price=2.0,
+        output_price=12.0,
+        is_fc_model=True,
+        underscore_to_dot=True,
+    ),
+    "gemini-3-pro-preview": ModelConfig(
+        model_name="gemini-3-pro-preview",
+        display_name="Gemini-3-Pro-Preview (Prompt)",
+        url="https://ai.google.dev/gemini-api/docs/models/gemini-3-pro",
+        org="Google",
+        license="Proprietary",
+        model_handler=GeminiHandler,
+        input_price=2.0,
+        output_price=12.0,
         is_fc_model=False,
         underscore_to_dot=False,
     ),

@@ -38,14 +38,23 @@ class GeminiHandler(BaseHandler):
         self.model_style = ModelStyle.GOOGLE
         instance = WandbConfigSingleton.get_instance()
         self.cfg = instance.config
+        # モデル設定上の実際の API モデル名（例: gemini-2.5-pro, gemini-3-pro-preview）
         self.api_model_name = self.cfg.model.pretrained_model_name_or_path
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise ValueError(
                 "GOOGLE_API_KEY environment variable must be set for Gemini models"
             )
-        # Use v1beta API for Gemini 2.5 models (function calling support)
-        http_options = HttpOptions(api_version="v1beta")
+        # API バージョンはモデル世代に応じて切り替える
+        #
+        # - Gemini 2.5 系 : v1beta を利用（従来の thinking_budget / AFC ベース）
+        # - Gemini 3   系 : v1alpha を利用（公式ドキュメントで推奨されている preview エンドポイント）
+        #
+        # 参考: https://ai.google.dev 付属ドキュメント
+        if isinstance(self.api_model_name, str) and self.api_model_name.startswith("gemini-3"):
+            http_options = HttpOptions(api_version="v1alpha")
+        else:
+            http_options = HttpOptions(api_version="v1beta")
         self.client = genai.Client(api_key=api_key, http_options=http_options)
         
         # Completely disable Google GenAI logging
@@ -68,7 +77,8 @@ class GeminiHandler(BaseHandler):
         warnings.filterwarnings("ignore", message=".*function_call.*")
         warnings.filterwarnings("ignore", message=".*thought_signature.*")
 
-        # please set thinking_budget (more than 0 or -1) in config file if you use gemini-2.5-pro
+        # please set thinking_budget (more than 0 or -1) in config file
+        # when you use Gemini 2.5 / 3 Pro models
         self.thinking_budget = getattr(self.cfg.model, 'thinking_budget', 0)
         
 

@@ -114,13 +114,20 @@ try:
             resume="allow" if wandb_run else None,
         )
         os.environ["NEJUMI_WANDB_INIT_DONE"] = "1"
-        weave.init(cfg_dict["wandb"]["entity"]+"/"+cfg_dict["wandb"]["project"])
 except Exception as e:
     print(f"Warning: Failed to initialize Wandb: {e}")
     print("Continuing without Wandb logging...")
     run = None
 
-# Initialize the WandbConfigSingleton
+# Initialize Weave separately so Weave failures don't disable W&B
+if run:
+    try:
+        weave.init(cfg_dict["wandb"]["entity"]+"/"+cfg_dict["wandb"]["project"])
+    except Exception as e:
+        print(f"Warning: Failed to initialize Weave: {e}")
+        print("Continuing without Weave...")
+
+# Initialize the WandbConfigSingleton (even when W&B is unavailable)
 if run:
     WandbConfigSingleton.initialize(run, llm=None)
     cfg = WandbConfigSingleton.get_instance().config
@@ -133,8 +140,11 @@ if run:
     # Inherit old runs
     blend_run(run_chain=True)
 else:
-    # Wandbが利用できない場合の代替設定
-    cfg = OmegaConf.create(cfg_dict)
+    # W&BなしでもSingletonを初期化して下流コードがcfgにアクセスできるようにする
+    from types import SimpleNamespace
+    offline_run = SimpleNamespace(config=cfg_dict)
+    WandbConfigSingleton.initialize(offline_run, llm=None)
+    cfg = WandbConfigSingleton.get_instance().config
 
 # 有効なベンチマークリストを取得
 enabled_benchmarks = []

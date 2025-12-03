@@ -1,4 +1,5 @@
 import os
+from types import SimpleNamespace
 import time
 from typing import Optional
 from ..model_style import ModelStyle
@@ -14,6 +15,7 @@ class OSSHandler(OpenAICompatibleHandler, EnforceOverrides):
 
         instance = WandbConfigSingleton.get_instance()
         cfg = instance.config
+        self.cfg = cfg
 
         #self.model_name_huggingface = self.model_name.replace("-FC", "")
         self.model_name_huggingface = cfg.model.pretrained_model_name_or_path
@@ -21,6 +23,33 @@ class OSSHandler(OpenAICompatibleHandler, EnforceOverrides):
         self.custom_chat_template = cfg.vllm.chat_template
 
     def setup_tokenizer(self, local_model_path: Optional[str] = None):
+        # オプトインでHFへのアクセスをスキップ（推論サーバが別・評価側を安定に保つため）
+        skip_hf = False
+        max_len_override = None
+        try:
+            handler_cfg = getattr(getattr(getattr(self.cfg, 'bfcl', {}), 'handler_config', {}), 'unified_oss_jsonschema', {})
+            skip_hf = bool(getattr(handler_cfg, 'skip_hf_tokenizer', False))
+            max_len_override = getattr(handler_cfg, 'max_context_length_override', None)
+        except Exception:
+            pass
+
+        if skip_hf:
+            # HFのTokenizer/Configに依存せず、設定値から最大文脈長を決定
+            if max_len_override is None:
+                try:
+                    max_len_override = getattr(self.cfg.vllm, 'max_model_len', None)
+                except Exception:
+                    max_len_override = None
+            if not isinstance(max_len_override, int) or max_len_override <= 0:
+                max_len_override = 131072
+
+            # apply_chat_template が無くても動くよう最低限の属性だけ持つダミーを設定
+            self.tokenizer = SimpleNamespace(model_max_length=max_len_override)
+            self.max_context_length = max_len_override
+            # Chat template の上書きは vLLM 側で適用されるため評価側では不要
+            print(f"[BFCL] Skipping HF tokenizer/config. Using max_context_length={self.max_context_length}")
+            return
+
         from transformers import AutoConfig, AutoTokenizer
 
         # Determine the model source
@@ -74,12 +103,16 @@ class OSSHandler(OpenAICompatibleHandler, EnforceOverrides):
 
         # For chat completions, we need to estimate token count from messages
         # Use apply_chat_template with `tools` arg to estimate input token count accurately
-        if fc:
-            tools = inference_data["tools"]
-            input_token_count = len(self.tokenizer.apply_chat_template(message, tokenize=True, tools=tools))
+        if hasattr(self.tokenizer, 'apply_chat_template'):
+            if fc:
+                tools = inference_data["tools"]
+                input_token_count = len(self.tokenizer.apply_chat_template(message, tokenize=True, tools=tools))
+            else:
+                # non-FC models: tools are already included in the message
+                input_token_count = len(self.tokenizer.apply_chat_template(message, tokenize=True))
         else:
-            # non-FC models: tools are already included in the message
-            input_token_count = len(self.tokenizer.apply_chat_template(message, tokenize=True))
+            # HF未使用モードでは保守的に0として扱い、max_tokensは上限でクリップ
+            input_token_count = 0
 
         # Determine the number of tokens to request. Cap it at cfg.bfcl.max_tokens if the model has a larger limit.
         if self.max_context_length < input_token_count + 2:
