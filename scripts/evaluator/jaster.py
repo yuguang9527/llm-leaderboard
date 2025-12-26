@@ -279,8 +279,7 @@ def evaluate_n_shot(few_shots: bool):
         evaluation_result["control_score"] = control_score
         del evaluation_result["metrics_func"], evaluation_result["control_func"], evaluation_result["inputs"]
     
-    # Weave logging is moved to jaster_translation.py after COMET score calculation
-    
+  
     # messages_for_log を削除
     for er in evaluation_results:
         if "messages_for_log" in er:
