@@ -4,7 +4,7 @@ wandb:
   #run: please set up run name in a model-base config
 
 testmode: true
-weave_evallogger_integration: true
+weave_evallogger_integration: true # beta feature (currently only mtbench and jaster are supported)
 inference_interval: 0 # seconds
 
 # Global error handling policy (can be overridden per-benchmark)
@@ -41,7 +41,7 @@ azure_openai:
 run:
   bfcl: false
   swebench: false
-  mtbench: false
+  mtbench: true
   jbbq: false 
   toxicity: false
   jtruthfulqa: false
@@ -49,7 +49,7 @@ run:
   hallulens: false
   arc_agi: false
   m_ifeval: false
-  jaster: true
+  jaster: false
   jmmlu_robustness: false # if this is set as true, jaster should set as true  
   aggregate: false
   

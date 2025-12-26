@@ -586,6 +586,7 @@ async def async_evaluate():
         # WeaveEvalLogger でログ
         weave_logger = WeaveEvalLogger(
             dataset_name="mtbench",
+            name="mtbench",
             model_name=cfg.wandb.run_name,
             eval_attributes={
                 "judge_model": cfg.mtbench.judge.model,
