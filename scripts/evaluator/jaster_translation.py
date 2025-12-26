@@ -1,7 +1,7 @@
 import pandas as pd
 from utils import read_wandb_table
 from config_singleton import WandbConfigSingleton
-from .evaluate_utils import commet_score
+from .evaluate_utils import commet_score, WeaveEvalLogger
 
 
 def evaluate():
@@ -37,6 +37,70 @@ def evaluate():
                 f"{dataset_name}_{i}shot_leaderboard_table": leaderboard_table,
             }
         )
+
+        # Weave EvalLogger integration (after COMET score calculation)
+        if cfg.get("weave_evallogger_integration", False):
+            print(f"[INFO] Weave logging for {dataset_name}_{i}shot")
+
+            # Prepare sample data for Weave (only test subset)
+            sample_key_to_data = {}
+            test_records = updated_output_table_test.to_dict('records')
+
+            for record in test_records:
+                key = (record["task"], record["subset"], record["index"])
+                if key not in sample_key_to_data:
+                    # Reconstruct messages for logging
+                    messages = []
+                    if record.get("prompt"):
+                        # Simple reconstruction - user message only
+                        messages = [{"role": "user", "content": record["input"]}]
+
+                    sample_key_to_data[key] = {
+                        "messages": messages,
+                        "prediction": record["output"],
+                        "reference": record["expected_output"],
+                        "input": record["input"],
+                        "task": record["task"],
+                        "subset": record["subset"],
+                        "index": record["index"],
+                        "evaluation": {},
+                    }
+
+                # Add evaluation scores
+                if record["score"] is not None and not (isinstance(record["score"], float) and pd.isna(record["score"])):
+                    metrics_name = record["metrics"]
+                    sample_key_to_data[key]["evaluation"][metrics_name] = record["score"]
+
+                    # Add primary_score (first metric of each task)
+                    if record["metrics"] == record.get("primary_metric", record["metrics"]):
+                        sample_key_to_data[key]["evaluation"]["primary_score"] = record["score"]
+
+            # WeaveEvalLogger for final scores
+            weave_logger = WeaveEvalLogger(
+                dataset_name=f"{dataset_name}_{i}shot",
+                model_name=cfg.wandb.run_name,
+                name=dataset_name,
+                eval_attributes={
+                    "num_few_shots": i,
+                },
+                multi_turn=False,
+            )
+            weave_logger.initialize()
+            weave_logger.log_samples(list(sample_key_to_data.values()))
+
+            # Summary metrics (task-wise primary_score averages)
+            summary_metrics = {}
+            for sample in sample_key_to_data.values():
+                task = sample["task"]
+                final_score = sample.get("evaluation", {}).get("primary_score")
+
+                if final_score is not None and isinstance(final_score, (int, float)):
+                    if task not in summary_metrics:
+                        summary_metrics[task] = []
+                    summary_metrics[task].append(final_score)
+
+            avg_summary = {k: pd.Series(v).mean() for k, v in summary_metrics.items() if v}
+            weave_logger.finalize(summary_metrics=avg_summary)
 
 def add_comet_evaluation_result(evaluation_results):
     # インデックスとスコアを計算するためのリストを初期化

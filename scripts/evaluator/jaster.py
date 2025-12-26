@@ -279,64 +279,7 @@ def evaluate_n_shot(few_shots: bool):
         evaluation_result["control_score"] = control_score
         del evaluation_result["metrics_func"], evaluation_result["control_func"], evaluation_result["inputs"]
     
-    # Weave EvalLogger integration
-    if cfg.get("weave_evallogger_integration", False):
-        
-        # 同じサンプル（task, subset, index）を集約してログする
-        sample_key_to_data = {}
-        for er in evaluation_results:
-            key = (er["task"], er["subset"], er["index"])
-            if key not in sample_key_to_data:
-                sample_key_to_data[key] = {
-                    "messages": er.get("messages_for_log", []),
-                    "prediction": er["output"],
-                    "reference": er["expected_output"],
-                    "input": er["input"],
-                    "task": er["task"],
-                    "subset": er["subset"],
-                    "index": er["index"],
-                    "evaluation": {},
-                }
-
-            # evaluation に全てのメトリクスとスコアを追加
-            # final_score と primary_metric も含めて、各サンプルの全スコアを表示
-            if er["score"] is not None and not (isinstance(er["score"], float) and np.isnan(er["score"])):
-                metrics_name = er["metrics"]
-                sample_key_to_data[key]["evaluation"][metrics_name] = er["score"]
-
-                # primary_metric の場合は final_score としても追加
-                if er["metrics"] == er["primary_metric"]:
-                    sample_key_to_data[key]["evaluation"]["primary_score"] = er["score"]
-        
-        # デバッグ: サンプル数を確認
-        print(f"[DEBUG] sample_key_to_data size: {len(sample_key_to_data)}")
-        
-        # WeaveEvalLogger でログ
-        weave_logger = WeaveEvalLogger(
-            dataset_name=f"{dataset_name}_{num_few_shots}shot",
-            model_name=cfg.wandb.run_name,
-            name=dataset_name,  # ベンチマーク名
-            eval_attributes={
-                "num_few_shots": num_few_shots,
-            },
-            multi_turn=False,  # jaster はシングルターン
-        )
-        weave_logger.initialize()
-        weave_logger.log_samples(list(sample_key_to_data.values()))
-        
-        # サマリーメトリクスを計算（全subsetのタスクごとの primary_score のみ）
-        summary_metrics = {}
-        for sample in sample_key_to_data.values():
-            task = sample["task"]
-            final_score = sample.get("evaluation", {}).get("primary_score")
-
-            if final_score is not None and isinstance(final_score, (int, float)):
-                if task not in summary_metrics:
-                    summary_metrics[task] = []
-                summary_metrics[task].append(final_score)
-
-        avg_summary = {k: np.mean(v) for k, v in summary_metrics.items() if v}
-        weave_logger.finalize(summary_metrics=avg_summary)
+    # Weave logging is moved to jaster_translation.py after COMET score calculation
     
     # messages_for_log を削除
     for er in evaluation_results:
