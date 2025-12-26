@@ -603,6 +603,7 @@ async def async_evaluate():
                     "question_id": row["question_id"],
                     "turn": row["turn"],
                     "category": row["category"],
+                    "num_few_shots": 0,  # MT-Bench is 0-shot only
                     "evaluation": {},
                 }
 
@@ -625,9 +626,9 @@ async def async_evaluate():
 
         # Weave summary metrics
         # カテゴリ別スコアを計算
-        weave_summary = {row['category']: row['score'] / 10.0 for _, row in df_summary.iterrows()}
+        weave_summary = {row['category']: row['score'] for _, row in df_summary.iterrows()}
         # 全平均スコアを追加
-        avg_score = mtbench_df["AVG_mtbench"].iloc[0] / 10.0  # 0-1スケールに正規化
+        avg_score = mtbench_df["AVG_mtbench"].iloc[0]  # 0-1スケールに正規化
         weave_summary["AVG"] = avg_score
         weave_logger.finalize(summary_metrics=weave_summary)
 

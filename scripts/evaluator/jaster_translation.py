@@ -55,16 +55,17 @@ def evaluate():
                         # Simple reconstruction - user message only
                         messages = [{"role": "user", "content": record["input"]}]
 
-                    sample_key_to_data[key] = {
-                        "messages": messages,
-                        "prediction": record["output"],
-                        "reference": record["expected_output"],
-                        "input": record["input"],
-                        "task": record["task"],
-                        "subset": record["subset"],
-                        "index": record["index"],
-                        "evaluation": {},
-                    }
+                sample_key_to_data[key] = {
+                    "messages": messages,
+                    "prediction": record["output"],
+                    "reference": record["expected_output"],
+                    "input": record["input"],
+                    "task": record["task"],
+                    "subset": record["subset"],
+                    "index": record["index"],
+                    "num_few_shots": i,  # Add num_few_shots to sample data
+                    "evaluation": {},
+                }
 
                 # Add evaluation scores
                 if record["score"] is not None and not (isinstance(record["score"], float) and pd.isna(record["score"])):
