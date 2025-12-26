@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from tqdm.asyncio import tqdm as atqdm
 
 from config_singleton import WandbConfigSingleton
-from .evaluate_utils import LLMAsyncProcessor, get_openai_judge_client
+from .evaluate_utils import LLMAsyncProcessor, get_openai_judge_client, WeaveEvalLogger
 
 # カテゴリが参照回答を必要とするかどうかのリスト
 NEED_REF_CATS = ["math", "reasoning", "coding", "arena-hard-200"]
@@ -533,6 +533,72 @@ async def async_evaluate():
     df_judge = df_judge[use_col]
     df_judge.rename(columns={'model': 'model_name'}, inplace=True)
     df_judge['sub_category'] = df_judge['category'].map(task_to_sub_category)
+
+    # Weave EvalLogger integration
+    if cfg.get("weave_evallogger_integration", False):
+        print("7. Weave EvalLoggerにログ記録中...")
+
+        # 同じ質問（question_id, turn）を集約してログする
+        sample_key_to_data = {}
+        for _, row in df_judge.iterrows():
+            key = (row["question_id"], row["turn"])
+            if key not in sample_key_to_data:
+                # messagesを構築（マルチターン対応）
+                messages = []
+                if row["turn"] == 1:
+                    # turn 1: 最初の質問と回答
+                    messages = [
+                        {"role": "user", "content": row["question"]},
+                        {"role": "assistant", "content": row["answer"]}
+                    ]
+                else:
+                    # turn 2: 質問IDでturn1のデータを取得して会話履歴を構築
+                    turn1_data = df_judge[(df_judge["question_id"] == row["question_id"]) & (df_judge["turn"] == 1)]
+                    if not turn1_data.empty:
+                        turn1_row = turn1_data.iloc[0]
+                        messages = [
+                            {"role": "user", "content": turn1_row["question"]},
+                            {"role": "assistant", "content": turn1_row["answer"]},
+                            {"role": "user", "content": row["question"]},
+                            {"role": "assistant", "content": row["answer"]}
+                        ]
+                    else:
+                        # turn1データがない場合はturn2のみ
+                        messages = [
+                            {"role": "user", "content": row["question"]},
+                            {"role": "assistant", "content": row["answer"]}
+                        ]
+
+                sample_key_to_data[key] = {
+                    "messages": messages,
+                    "prediction": row["answer"],
+                    "reference": None,  # MTBenchには明示的なreferenceがない
+                    "input": row["question"],
+                    "question_id": row["question_id"],
+                    "turn": row["turn"],
+                    "category": row["category"],
+                    "evaluation": {},
+                }
+
+            # evaluation にスコアを追加（judge_count分の平均を取る）
+            sample_key_to_data[key]["evaluation"]["judge_score"] = row["score"]
+
+        # WeaveEvalLogger でログ
+        weave_logger = WeaveEvalLogger(
+            dataset_name="mtbench",
+            model_name=cfg.wandb.run_name,
+            eval_attributes={
+                "judge_model": cfg.mtbench.judge.model,
+                "multi_turn": True,
+            },
+            multi_turn=True,  # MTBench はマルチターン
+        )
+        weave_logger.initialize()
+        weave_logger.log_samples(list(sample_key_to_data.values()))
+
+        # サマリーメトリクスは使用しない（空にする）
+        avg_summary = {}
+        weave_logger.finalize(summary_metrics=avg_summary)
 
     # テーブルをログに記録
     print("7. 結果をWandBにログ記録中...")
