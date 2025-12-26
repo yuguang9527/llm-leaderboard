@@ -101,6 +101,9 @@ def evaluate():
                     summary_metrics[task].append(final_score)
 
             avg_summary = {k: pd.Series(v).mean() for k, v in summary_metrics.items() if v}
+            # Add overall average score (same as MT-Bench)
+            overall_avg = leaderboard_table["AVG"].iloc[0]
+            avg_summary["AVG"] = overall_avg
             weave_logger.finalize(summary_metrics=avg_summary)
 
 def add_comet_evaluation_result(evaluation_results):
