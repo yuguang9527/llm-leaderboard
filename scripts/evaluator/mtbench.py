@@ -597,15 +597,6 @@ async def async_evaluate():
         weave_logger.initialize()
         weave_logger.log_samples(list(sample_key_to_data.values()))
 
-        # サマリーメトリクスを計算（各カテゴリの平均スコア）
-        # df_summary は既に計算済み（各カテゴリの平均スコア）
-        _df_judge = df_judge.query('score != -1').groupby(['question_id', 'turn', 'category'], as_index=False).score.mean()
-        df_summary = _df_judge.groupby(['category'], as_index=False).score.mean()
-
-        # スコアを0-1スケールに正規化（Weave summary用）
-        avg_summary = {row['category']: row['score'] / 10.0 for _, row in df_summary.iterrows()}
-        weave_logger.finalize(summary_metrics=avg_summary)
-
     # テーブルをログに記録
     print("7. 結果をWandBにログ記録中...")
     table_log = wandb.Table(dataframe=df_judge)
@@ -630,7 +621,16 @@ async def async_evaluate():
         "mtbench_leaderboard_table": table_metric,
         "mtbench_radar_table": table_radar,
     })
-    
+
+    # Weave summary metrics
+    if cfg.get("weave_evallogger_integration", False):
+        # カテゴリ別スコアを計算
+        weave_summary = {row['category']: row['score'] / 10.0 for _, row in df_summary.iterrows()}
+        # 全平均スコアを追加
+        avg_score = mtbench_df["AVG_mtbench"].iloc[0] / 10.0  # 0-1スケールに正規化
+        weave_summary["AVG"] = avg_score
+        weave_logger.finalize(summary_metrics=weave_summary)
+
     print("MT-Bench評価が正常に完了しました！")
     return
 
