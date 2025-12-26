@@ -534,6 +534,32 @@ async def async_evaluate():
     df_judge.rename(columns={'model': 'model_name'}, inplace=True)
     df_judge['sub_category'] = df_judge['category'].map(task_to_sub_category)
 
+
+    # テーブルをログに記録
+    print("7. 結果をWandBにログ記録中...")
+    table_log = wandb.Table(dataframe=df_judge)
+    
+    # レーダーチャート用のテーブル
+    _df_judge = df_judge.query('score != -1').groupby(['question_id', 'turn', 'category'], as_index=False).score.mean()
+    df_summary = _df_judge.groupby(['category'], as_index=False).score.mean()
+    
+    # スコアを0-1スケールに正規化
+    df_summary['score'] = df_summary['score'] / 10.0
+    
+    table_radar = wandb.Table(dataframe=df_summary)
+
+    # リーダーボード用のテーブル
+    mtbench_df = pd.DataFrame([df_summary.score.values.tolist()], columns=df_summary.category.values.tolist())
+    mtbench_df.insert(0, "AVG_mtbench", mtbench_df.mean(axis=1, numeric_only=True))
+    mtbench_df.insert(0, "model_name", cfg.model.pretrained_model_name_or_path)
+    table_metric = wandb.Table(dataframe=mtbench_df)
+
+    run.log({
+        "mtbench_output_table": table_log,
+        "mtbench_leaderboard_table": table_metric,
+        "mtbench_radar_table": table_radar,
+    })
+
     # Weave EvalLogger integration
     if cfg.get("weave_evallogger_integration", False):
         print("7. Weave EvalLoggerにログ記録中...")
@@ -597,33 +623,7 @@ async def async_evaluate():
         weave_logger.initialize()
         weave_logger.log_samples(list(sample_key_to_data.values()))
 
-    # テーブルをログに記録
-    print("7. 結果をWandBにログ記録中...")
-    table_log = wandb.Table(dataframe=df_judge)
-    
-    # レーダーチャート用のテーブル
-    _df_judge = df_judge.query('score != -1').groupby(['question_id', 'turn', 'category'], as_index=False).score.mean()
-    df_summary = _df_judge.groupby(['category'], as_index=False).score.mean()
-    
-    # スコアを0-1スケールに正規化
-    df_summary['score'] = df_summary['score'] / 10.0
-    
-    table_radar = wandb.Table(dataframe=df_summary)
-
-    # リーダーボード用のテーブル
-    mtbench_df = pd.DataFrame([df_summary.score.values.tolist()], columns=df_summary.category.values.tolist())
-    mtbench_df.insert(0, "AVG_mtbench", mtbench_df.mean(axis=1, numeric_only=True))
-    mtbench_df.insert(0, "model_name", cfg.model.pretrained_model_name_or_path)
-    table_metric = wandb.Table(dataframe=mtbench_df)
-
-    run.log({
-        "mtbench_output_table": table_log,
-        "mtbench_leaderboard_table": table_metric,
-        "mtbench_radar_table": table_radar,
-    })
-
-    # Weave summary metrics
-    if cfg.get("weave_evallogger_integration", False):
+        # Weave summary metrics
         # カテゴリ別スコアを計算
         weave_summary = {row['category']: row['score'] / 10.0 for _, row in df_summary.iterrows()}
         # 全平均スコアを追加
