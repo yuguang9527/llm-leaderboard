@@ -130,3 +130,6 @@ scripts/evaluator/evaluate_utils/bfcl_pkg/score/
 scripts/evaluator/evaluate_utils/bfcl_pkg/result/
 scripts/evaluator/evaluate_utils/bfcl_pkg/data/
 scripts/evaluator/evaluate_utils/bfcl_pkg/data_jp/
+
+# Agent documentation
+AGENT.md

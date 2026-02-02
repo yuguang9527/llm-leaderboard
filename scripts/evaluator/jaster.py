@@ -23,6 +23,7 @@ from .evaluate_utils import (
     normalize,
     text_formatter,
     evaluate_robustness,
+    WeaveEvalLogger,
 )
 
 def evaluate_n_shot(few_shots: bool):
@@ -155,10 +156,16 @@ def evaluate_n_shot(few_shots: bool):
                     ["exact_match_figure"] if task in ["mawps", "mgsm"] else
                     task_data["metrics"]
                 )
+
+                # primary_metric を決定（最初のメトリクス）
+                primary_metric = metrics_list[0]
                 
                 # Add inputs only once per sample (for LLM processing)
                 generator_config = {"max_tokens": cfg.jaster.override_max_tokens or task_data["output_length"]}
                 inputs.extend([messages, generator_config])
+                
+                # メッセージを保存（WeaveEvalLogger用）
+                messages_for_log = [m.copy() for m in messages]
                 
                 for metrics in metrics_list:
                     metrics_func: callable = jaster_metrics_dict[metrics]
@@ -182,6 +189,8 @@ def evaluate_n_shot(few_shots: bool):
                             "control_func": control_func,
                             "score": None,  # to be filled
                             "inputs": inputs,
+                            "messages_for_log": messages_for_log,
+                            "primary_metric": primary_metric,  # タスクの最初のメトリクス
                         }
                     )
 
@@ -269,6 +278,12 @@ def evaluate_n_shot(few_shots: bool):
         evaluation_result["score"] = score
         evaluation_result["control_score"] = control_score
         del evaluation_result["metrics_func"], evaluation_result["control_func"], evaluation_result["inputs"]
+    
+  
+    # messages_for_log を削除
+    for er in evaluation_results:
+        if "messages_for_log" in er:
+            del er["messages_for_log"]
         
     # Handle all tasks uniformly
     output_df = pd.DataFrame(evaluation_results)
@@ -375,7 +390,7 @@ def evaluate_n_shot(few_shots: bool):
             }
         )
 
-@weave.op(call_display_name=lambda _: "[BFCL] " + WandbConfigSingleton.get_instance().config.wandb.run_name)
+@weave.op(call_display_name=lambda _: "[JASTER] " + WandbConfigSingleton.get_instance().config.wandb.run_name)
 def evaluate():
     evaluate_n_shot(few_shots=False)
     evaluate_n_shot(few_shots=True)

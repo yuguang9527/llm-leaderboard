@@ -6,3 +6,4 @@ from .llm_judge_client import get_openai_judge_client
 from .robustness import evaluate_robustness
 from .answer_parser import *
 from .to_be_deprecated import Sample
+from .weave_eval_logger import WeaveEvalLogger

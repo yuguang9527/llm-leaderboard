@@ -96,4 +96,4 @@ if [[ "$API_TYPE" == vllm* ]]; then
   if [[ "${ans,,}" == y ]]; then docker compose stop vllm; fi
 fi
 
-echo "Done." 
+echo "Done."

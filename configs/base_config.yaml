@@ -1,9 +1,10 @@
 wandb:
   entity: 'llm-leaderboard'
-  project: 'nejumi-leaderboard4'
+  project: 'nejumi-leaderboard4-test'
   #run: please set up run name in a model-base config
 
 testmode: false
+weave_evallogger_integration: true # beta feature (currently only mtbench and jaster are supported)
 inference_interval: 0 # seconds
 
 # Global error handling policy (can be overridden per-benchmark)
@@ -50,7 +51,7 @@ run:
   m_ifeval: true
   jaster: true
   jmmlu_robustness: true # if this is set as true, jaster should set as true  
-  aggregate: true
+  aggregate: true 
   
 
 model:
