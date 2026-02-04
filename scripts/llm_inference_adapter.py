@@ -142,6 +142,45 @@ class ChatBedrock(BaseLLMClient):
         self.generator_config = {
             k: v for k, v in cfg.generator.items() if k not in self.ignore_keys
         }
+        self.reasoning_config = self._normalize_reasoning_config(cfg)
+
+    @staticmethod
+    def _normalize_reasoning_config(cfg) -> Optional[Dict[str, str]]:
+        try:
+            raw = getattr(cfg.model, "reasoning_config", None)
+            if raw is None:
+                raw = getattr(cfg.model, "reasoningConfig", None)
+        except Exception:
+            raw = None
+
+        if raw is None:
+            return None
+
+        try:
+            if isinstance(raw, dict):
+                raw_dict = raw
+            elif hasattr(raw, "items"):
+                raw_dict = {key: raw[key] for key in raw}
+            else:
+                return None
+        except Exception:
+            return None
+
+        normalized: Dict[str, str] = {}
+        if "type" in raw_dict and raw_dict["type"] is not None:
+            normalized["type"] = str(raw_dict["type"])
+        elif "enabled" in raw_dict:
+            normalized["type"] = "enabled" if raw_dict["enabled"] else "disabled"
+
+        if "maxReasoningEffort" in raw_dict and raw_dict["maxReasoningEffort"] is not None:
+            normalized["maxReasoningEffort"] = str(raw_dict["maxReasoningEffort"])
+        elif "max_reasoning_effort" in raw_dict and raw_dict["max_reasoning_effort"] is not None:
+            normalized["maxReasoningEffort"] = str(raw_dict["max_reasoning_effort"])
+
+        if normalized.get("type") == "enabled" or "maxReasoningEffort" in normalized:
+            return normalized
+
+        return None
 
     async def _invoke_async(self, messages: list[dict[str, str]], max_tokens: int):
         """非同期でBedrockを呼び出し"""
@@ -188,6 +227,13 @@ class ChatBedrock(BaseLLMClient):
                 "messages": messages,
                 "inferenceConfig": inference_config
             }
+            if self.reasoning_config:
+                if self.reasoning_config.get("maxReasoningEffort", "").lower() == "high":
+                    for key in ["temperature", "topP", "topK", "top_k", "maxTokens"]:
+                        inference_config.pop(key, None)
+                body_dict["additionalModelRequestFields"] = {
+                    "reasoningConfig": self.reasoning_config
+                }
         else:
             raise ValueError(f"Unsupported model: {self.model_id}")
 
