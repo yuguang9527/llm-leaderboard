@@ -29,6 +29,9 @@ from evaluator import (
     aggregate,
     swe_bench,
     arc_agi,
+    taiwan_zh_tw,
+    tmmluplus,
+    cbbq,
 )
 from utils import paginate_choices
 import weave
@@ -149,7 +152,10 @@ benchmark_map = {
     'hallulens': 'hallulens',
     'arc_agi': 'arc_agi',
     'm_ifeval': 'm_ifeval',
-    'jaster': 'jaster'
+    'jaster': 'jaster',
+    'tmmluplus': 'tmmluplus',
+    'cbbq_zh': 'cbbq_zh',
+    'taiwan_zh_tw': 'taiwan_zh_tw',
 }
 
 for bench_key, bench_name in benchmark_map.items():
@@ -294,6 +300,24 @@ if cfg.run.m_ifeval:
     start_benchmark_tracking('m_ifeval')
     m_ifeval.evaluate()
     complete_benchmark_tracking('m_ifeval')
+
+# TMMLU+ (Traditional Chinese multi-subject MCQ)
+if cfg.run.get('tmmluplus', False):
+    start_benchmark_tracking('tmmluplus')
+    tmmluplus.evaluate()
+    complete_benchmark_tracking('tmmluplus')
+
+# CBBQ (Chinese Bias Benchmark)
+if cfg.run.get('cbbq_zh', False):
+    start_benchmark_tracking('cbbq_zh')
+    cbbq.evaluate()
+    complete_benchmark_tracking('cbbq_zh')
+
+# Taiwan zh-TW benchmark
+if cfg.run.taiwan_zh_tw:
+    start_benchmark_tracking('taiwan_zh_tw')
+    taiwan_zh_tw.evaluate()
+    complete_benchmark_tracking('taiwan_zh_tw')
 
 # Evaluation phase
 if cfg.run.jaster:

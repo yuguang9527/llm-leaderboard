@@ -1,30 +1,15 @@
-# Evaluator modules
-from . import jaster
-from . import jbbq
-from . import mtbench
-from . import jaster_translation
-from . import toxicity
-from . import jtruthfulqa
-from . import aggregate
-from . import bfcl
-from . import swe_bench
-from . import hallulens
-from . import arc_agi
-from . import hle
-from . import m_ifeval
+# Evaluator modules - lazy imports to avoid pulling unused dependencies
+import importlib
 
-__all__ = [
-    'jaster',
-    'jbbq', 
-    'mtbench',
-    'jaster_translation',
-    'toxicity',
-    'jtruthfulqa',
-    'aggregate',
-    'bfcl',
-    'swe_bench',
-    'hallulens',
-    'arc_agi',
-    'hle',
-    'm_ifeval',
+_MODULE_NAMES = [
+    'jaster', 'jbbq', 'mtbench', 'jaster_translation', 'toxicity',
+    'jtruthfulqa', 'aggregate', 'bfcl', 'swe_bench', 'hallulens',
+    'arc_agi', 'hle', 'm_ifeval', 'taiwan_zh_tw', 'tmmluplus', 'cbbq',
 ]
+
+__all__ = list(_MODULE_NAMES)
+
+def __getattr__(name):
+    if name in _MODULE_NAMES:
+        return importlib.import_module(f".{name}", __name__)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

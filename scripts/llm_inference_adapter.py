@@ -13,16 +13,15 @@ from omegaconf import OmegaConf, DictConfig
 import openai
 from openai.types.responses import Response as OpenAIResponse, ParsedResponse as OpenAIParsedResponse
 from openai.types.chat import ChatCompletion as OpenAIChatCompletion
-from mistralai import Mistral
-# import google.generativeai as genai  # Old import - no longer needed
-from anthropic import Anthropic
-import cohere
-from botocore.exceptions import ClientError
-import boto3
-from botocore.config import Config
 from openai import AzureOpenAI
 import httpx
 from pydantic import BaseModel
+
+def _lazy_import(module_name, attr=None):
+    """Import a module (and optionally an attribute) only when called."""
+    import importlib
+    mod = importlib.import_module(module_name)
+    return getattr(mod, attr) if attr else mod
 
 
 logger = logging.getLogger(__name__)
@@ -124,7 +123,8 @@ class BaseLLMClient(ABC):
 
 class ChatBedrock(BaseLLMClient):
     def __init__(self, cfg) -> None:
-        # 接続プールとタイムアウト設定を改善
+        from botocore.config import Config
+        import boto3
         config = Config(
             read_timeout=1000,
             connect_timeout=60,
@@ -212,7 +212,10 @@ class ChatBedrock(BaseLLMClient):
                     response_body = json.loads(response.get("body").read())
                 except Exception:
                     response_body = {"content": []}
-        except ClientError as e:
+        except Exception as e:
+            from botocore.exceptions import ClientError
+            if not isinstance(e, ClientError):
+                raise
             print(f"ERROR: Can't invoke '{self.model_id}'. Reason: {e}")
             # フォールバック空応答
             return {"content": []}
@@ -648,6 +651,7 @@ class AzureOpenAIResponsesClient(OpenAIResponsesClient):
 
 class MistralClient(BaseLLMClient):
     def __init__(self, api_key, model, **kwargs):
+        from mistralai import Mistral
         self.client = Mistral(api_key=api_key)
         self.model = model
         self.kwargs = kwargs
@@ -963,6 +967,7 @@ class GoogleClient(BaseLLMClient):
 
 class AnthropicClient(BaseLLMClient):
     def __init__(self, api_key, model, **kwargs):
+        from anthropic import Anthropic
         self.client = Anthropic(api_key=api_key)
         self.model = model
         self.kwargs = kwargs
@@ -1142,7 +1147,7 @@ class AzureOpenAIClient(BaseLLMClient):
 
 class CohereClient(BaseLLMClient):
     def __init__(self, api_key, model, **kwargs):
-        # タイムアウト設定
+        import cohere
         import httpx
         timeout_config = httpx.Timeout(
             connect=30.0,   # 接続タイムアウト30秒

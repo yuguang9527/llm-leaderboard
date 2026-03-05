@@ -1,0 +1,9 @@
+wandb
+weave
+openai
+httpx
+omegaconf
+python-dotenv
+datasets
+pandas
+numpy

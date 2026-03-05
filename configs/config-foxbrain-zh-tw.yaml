@@ -1,0 +1,47 @@
+wandb:
+  entity: "llm-leaderboard"
+  project: "nejumi-leaderboard-zh-v1"
+  run_name: "deepseek-r1-distill-llama-70b-zh-tw"
+
+api: "openai-compatible"
+base_url: "http://localhost:8000/v1"
+api_key: "EMPTY"
+batch_size: 16
+
+model:
+  pretrained_model_name_or_path: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+  bfcl_model_id: OpenAICompatible-FC
+  base_model: "llama3.1"
+  size_category: "Large (30B+)"
+  size: 70
+  release_date: "01/20/2025"
+
+generator:
+  max_tokens: 1024
+  temperature: 0.1
+  top_p: 1.0
+
+run:
+  bfcl: true
+  swebench: true
+  mtbench: false
+  jbbq: false
+  toxicity: false
+  jtruthfulqa: false
+  hle: false
+  hallulens: false
+  arc_agi: false
+  m_ifeval: false
+  jaster: false
+  jmmlu_robustness: false
+  tmmluplus: true
+  cbbq_zh: true
+  taiwan_zh_tw: true
+  aggregate: true
+
+taiwan_zh_tw:
+  dataset_path: "datasets/taiwan_zh_tw/samples.json"
+  max_samples: 6
+  max_samples_testmode: 3
+  max_tokens: 512
+  system_prompt: "You are a helpful assistant. Answer in Traditional Chinese used in Taiwan."

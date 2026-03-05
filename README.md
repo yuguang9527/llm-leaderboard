@@ -379,6 +379,16 @@ vllm:
 
 Once you prepare the dataset and the configuration files, you can run the evaluation process.
 
+### 🤖 Chinese Board CI/CD (CoreWeave + W&B)
+
+For automated Chinese-board runs (remote vLLM on Slurm + local evaluator + W&B logging), use:
+
+```bash
+bash scripts/ci/run_zh_remote_pipeline.sh config-foxbrain-zh-tw.yaml
+```
+
+For details and GitHub Actions setup, see `docs/zh_board_cicd.md`.
+
 #### Using Docker Compose
 
 Basic flow (requires `.env` and a model YAML under `configs/`):

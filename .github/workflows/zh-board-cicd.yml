@@ -1,0 +1,74 @@
+name: zh-board-cicd
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        description: "Model config in configs/"
+        required: false
+        default: "config-foxbrain-zh-tw.yaml"
+      local_port:
+        description: "Local tunnel port"
+        required: false
+        default: "8000"
+  schedule:
+    - cron: "0 2 * * 3"
+
+jobs:
+  evaluate-zh-board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    concurrency:
+      group: zh-board-cicd
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      SUNK_HOST: ${{ secrets.SUNK_HOST }}
+      SUNK_USER: ${{ secrets.SUNK_USER }}
+      WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+      OPENAI_COMPATIBLE_API_KEY: ${{ secrets.OPENAI_COMPATIBLE_API_KEY }}
+      WANDB_BASE_URL: https://api.wandb.ai
+      LOCAL_PORT: ${{ github.event.inputs.local_port || '8000' }}
+      CONFIG_NAME: ${{ github.event.inputs.config || 'config-foxbrain-zh-tw.yaml' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Load CoreWeave SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SUNK_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519_sunk
+          chmod 600 ~/.ssh/id_ed25519_sunk
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUNK_HOST}"
+          test -n "${SUNK_USER}"
+          test -n "${WANDB_API_KEY}"
+
+      - name: Run zh board pipeline
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/run_zh_remote_pipeline.sh
+          SUNK_SSH_KEY=~/.ssh/id_ed25519_sunk \
+          scripts/ci/run_zh_remote_pipeline.sh "${CONFIG_NAME}" | tee zh-board-cicd.log
+
+      - name: Upload pipeline logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zh-board-cicd-log-${{ github.run_id }}
+          path: |
+            zh-board-cicd.log
+            wandb/**/logs/**

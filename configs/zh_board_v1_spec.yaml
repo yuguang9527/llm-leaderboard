@@ -1,0 +1,173 @@
+version: "v1-draft"
+owner: "llm-leaderboard"
+description: "Chinese board v1 spec aligned with Nejumi methodology."
+
+wandb:
+  entity: "llm-leaderboard"
+  project: "nejumi-leaderboard-zh-v1"
+  run_name_prefix: "zh-v1"
+
+board:
+  name: "Nejumi-ZH-V1"
+  language: "zh-Hant"
+  goals:
+    - "methodology parity with Nejumi"
+    - "artifact-based reproducibility"
+    - "auditable scoring and weighting"
+
+evaluation:
+  scoring_modes:
+    - "rule"
+    - "judge"
+    - "exec"
+  judge:
+    model: "gpt-4.1-2025-04-14"
+    temperature: 0.0
+    max_tokens: 2048
+    parallel: 32
+    prompt_version: "zh-v1"
+    output_schema_version: "zh-judge-v1"
+
+weights:
+  total_score:
+    glp: 0.6
+    alt: 0.4
+  glp:
+    basic_language: 0.15
+    reasoning: 0.20
+    knowledge_qa: 0.15
+    app_dev: 0.10
+  alt:
+    safety_compliance: 0.12
+    fairness_bias: 0.08
+    truthfulness: 0.08
+    robustness: 0.06
+    controllability_refusal: 0.06
+
+task_families:
+  glp:
+    basic_language:
+      subtasks:
+        - "semantic_understanding"
+        - "grammar_rewrite"
+        - "information_extraction"
+    reasoning:
+      subtasks:
+        - "logical_reasoning"
+        - "math_reasoning"
+        - "abstract_reasoning"
+    knowledge_qa:
+      subtasks:
+        - "general_knowledge_zh"
+        - "domain_knowledge_mfg_supply_chain"
+    app_dev:
+      subtasks:
+        - "code_repair"
+        - "tool_calling"
+  alt:
+    safety_compliance:
+      subtasks:
+        - "toxicity"
+        - "harmful_request_handling"
+    fairness_bias:
+      subtasks:
+        - "social_bias_qa"
+    truthfulness:
+      subtasks:
+        - "truthful_qa_zh"
+        - "hallucination_resistance_zh"
+    robustness:
+      subtasks:
+        - "jailbreak_resistance_zh"
+        - "prompt_injection_resistance_zh"
+    controllability_refusal:
+      subtasks:
+        - "instruction_following_zh"
+        - "appropriate_refusal_zh"
+
+datasets:
+  # Note: these are placeholders until legal/licensing review is completed.
+  glp:
+    basic_language:
+      candidates:
+        - "drcd"
+        - "internal_zh_rewrite_v1"
+    reasoning:
+      candidates:
+        - "tmmluplus"
+        - "tmlu"
+    knowledge_qa:
+      candidates:
+        - "tmmluplus"
+        - "tmlu"
+        - "internal_mfg_supply_chain_qa_v1"
+    app_dev:
+      candidates:
+        - "swebench_verified"
+        - "bfcl"
+  alt:
+    safety_compliance:
+      candidates:
+        - "c_safetybench"
+    fairness_bias:
+      candidates:
+        - "cbbq"
+    truthfulness:
+      candidates:
+        - "truthfulqa_zh"
+        - "halueval_zh"
+    robustness:
+      candidates:
+        - "xstest_zh"
+    controllability_refusal:
+      candidates:
+        - "ifeval_zh"
+
+artifacts:
+  datasets:
+    tmmluplus:
+      artifact_path: "llm-leaderboard/nejumi-leaderboard-zh-v1/tmmluplus:v1"
+      hf_dataset_id: "ikala/tmmluplus"
+      license: "MIT"
+      scoring_type: "rule"
+      task_families: ["glp.reasoning", "glp.knowledge_qa"]
+    swebench_verified:
+      artifact_path: "llm-leaderboard/nejumi-leaderboard-zh-v1/swebench_verified:v1"
+      hf_dataset_id: "princeton-nlp/SWE-bench_Verified"
+      license: "pending"
+      scoring_type: "exec"
+      task_families: ["glp.app_dev"]
+    bfcl:
+      artifact_path: "llm-leaderboard/nejumi-leaderboard-zh-v1/bfcl:v1"
+      hf_dataset_id: "gorilla-llm/Berkeley-Function-Calling-Leaderboard"
+      license: "Apache-2.0"
+      scoring_type: "exec"
+      task_families: ["glp.app_dev"]
+    cbbq:
+      artifact_path: "llm-leaderboard/nejumi-leaderboard-zh-v1/cbbq:v1"
+      hf_dataset_id: "walledai/CBBQ"
+      license: "CC BY-SA 4.0"
+      scoring_type: "rule"
+      task_families: ["alt.fairness_bias"]
+  scoring_spec:
+    - "llm-leaderboard/nejumi-leaderboard-zh-v1/zh_scoring_spec:v1"
+  weights:
+    - "llm-leaderboard/nejumi-leaderboard-zh-v1/zh_weights:v1"
+  sample_fields_required:
+    - "id"
+    - "task_family"
+    - "subtask"
+    - "prompt"
+    - "reference"
+    - "scoring_type"
+    - "source_dataset"
+    - "source_uri"
+    - "license"
+    - "license_notes"
+    - "split"
+
+release_gates:
+  - "license whitelist approved"
+  - "artifact versions pinned in config"
+  - "judge prompt/schema version pinned"
+  - "score reproducibility check passed"

@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from utils import read_wandb_table
 from config_singleton import WandbConfigSingleton
+from evaluator.zh_weights import compute_zh_scores
 
 def radar_contents(leaderboard_dict, categories: list[str]) -> list[list[str, float]]:
     ret = []
@@ -26,7 +27,7 @@ def update_flag(cfg, blend_cfg):
     
     # 新しいベンチマークのフラグ
     arc_agi_flag = bfcl_flag = hle_flag = jhumaneval_flag = hallulens_flag = False
-    jmmlu_pro_flag = jamc_qa_flag = m_ifeval_flag = False
+    jmmlu_pro_flag = jamc_qa_flag = m_ifeval_flag = taiwan_zh_tw_flag = tmmluplus_flag = cbbq_zh_flag = False
 
     if hasattr(cfg, 'run'):
         mtbench_flag = cfg.run.mtbench
@@ -40,6 +41,9 @@ def update_flag(cfg, blend_cfg):
         hle_flag = cfg.run.get('hle', False)
         hallulens_flag = cfg.run.get('hallulens', False)
         m_ifeval_flag = cfg.run.get('m_ifeval', False)
+        taiwan_zh_tw_flag = cfg.run.get('taiwan_zh_tw', False)
+        tmmluplus_flag = cfg.run.get('tmmluplus', False)
+        cbbq_zh_flag = cfg.run.get('cbbq_zh', False)
 
     if blend_cfg:
         for old_run in blend_cfg.old_runs:
@@ -68,6 +72,8 @@ def update_flag(cfg, blend_cfg):
                     hallulens_flag = True
                 elif "m_ifeval" in dataset:
                     m_ifeval_flag = True
+                elif "taiwan_zh_tw" in dataset:
+                    taiwan_zh_tw_flag = True
     
     if mtbench_flag and jaster_flag:
         GLP_flag = True
@@ -83,6 +89,9 @@ def update_flag(cfg, blend_cfg):
         'hallulens': hallulens_flag,
         'jamc_qa': jamc_qa_flag,  # 将来実装予定
         'm_ifeval': m_ifeval_flag,
+        'taiwan_zh_tw': taiwan_zh_tw_flag,
+        'tmmluplus': tmmluplus_flag,
+        'cbbq_zh': cbbq_zh_flag,
     }
     
     return GLP_flag, ALT_flag, swebench_flag, additional_flags
@@ -601,6 +610,9 @@ def evaluate():
     jhumaneval_result = load_benchmark_results(run, 'jhumaneval', "jhumaneval_leaderboard_table", additional_flags)
     hallulens_result = load_benchmark_results(run, 'hallulens', "hallulens_leaderboard_table", additional_flags)
     m_ifeval_result = load_benchmark_results(run, 'm_ifeval', "m_ifeval_leaderboard_table", additional_flags)
+    taiwan_zh_tw_result = load_benchmark_results(run, 'taiwan_zh_tw', "taiwan_zh_tw_leaderboard_table", additional_flags)
+    tmmluplus_result = load_benchmark_results(run, 'tmmluplus', "tmmluplus_leaderboard_table", additional_flags)
+    cbbq_zh_result = load_benchmark_results(run, 'cbbq_zh', "cbbq_zh_leaderboard_table", additional_flags)
 
     print("-------- aggregating results ----------")
 
@@ -627,6 +639,58 @@ def evaluate():
             jaster_fewshots, toxicity, jbbq_fewshots, jtruthfulqa,
             jmmlu_robust_fewshots, additional_flags, hallulens_result, m_ifeval_result, run
         )
+
+    # CBBQ (Chinese Bias Benchmark → ALT)
+    if additional_flags.get('cbbq_zh', False) and cbbq_zh_result is not None:
+        cbbq_accuracy = float(cbbq_zh_result["AVG"][0]) if "AVG" in cbbq_zh_result.columns else float('nan')
+        cbbq_bias = float(cbbq_zh_result["avg_abs_bias_score"][0]) if "avg_abs_bias_score" in cbbq_zh_result.columns else float('nan')
+        leaderboard_dict["ALT_偏見公平(CBBQ)"] = cbbq_accuracy
+        create_subcategory_table(run, cfg, "cbbq_zh", {
+            "AVG": cbbq_accuracy,
+            "avg_abs_bias_score": cbbq_bias,
+        }, table_name="subcategory_table_cbbq_zh")
+
+        if "アラインメント(ALT)_AVG" in leaderboard_dict and not np.isnan(leaderboard_dict["アラインメント(ALT)_AVG"]):
+            leaderboard_dict["アラインメント(ALT)_AVG"] = np.mean(
+                [leaderboard_dict["アラインメント(ALT)_AVG"], cbbq_accuracy]
+            )
+        else:
+            leaderboard_dict["アラインメント(ALT)_AVG"] = cbbq_accuracy
+
+    # TMMLU+ (Traditional Chinese knowledge/reasoning)
+    if additional_flags.get('tmmluplus', False) and tmmluplus_result is not None:
+        tmmluplus_avg = float(tmmluplus_result["AVG"][0]) if "AVG" in tmmluplus_result.columns else float('nan')
+        leaderboard_dict["GLP_繁中知識推理(TMMLU+)"] = tmmluplus_avg
+        tmmluplus_detail = {"AVG": tmmluplus_avg}
+        for col in ["STEM", "Social Sciences", "Humanities", "Other"]:
+            if col in tmmluplus_result.columns:
+                tmmluplus_detail[col] = float(tmmluplus_result[col][0])
+        create_subcategory_table(run, cfg, "tmmluplus", tmmluplus_detail, table_name="subcategory_table_tmmluplus")
+
+        if "汎用的言語性能(GLP)_AVG" in leaderboard_dict and not np.isnan(leaderboard_dict["汎用的言語性能(GLP)_AVG"]):
+            leaderboard_dict["汎用的言語性能(GLP)_AVG"] = np.mean(
+                [leaderboard_dict["汎用的言語性能(GLP)_AVG"], tmmluplus_avg]
+            )
+        else:
+            leaderboard_dict["汎用的言語性能(GLP)_AVG"] = tmmluplus_avg
+
+    # Taiwan zh-TW benchmark mapping
+    if additional_flags.get('taiwan_zh_tw', False) and taiwan_zh_tw_result is not None:
+        zh_tw_score = float(taiwan_zh_tw_result["AVG"][0]) if "AVG" in taiwan_zh_tw_result.columns else float('nan')
+        leaderboard_dict["GLP_繁體中文"] = zh_tw_score
+        create_subcategory_table(
+            run,
+            cfg,
+            "taiwan_zh_tw",
+            {"AVG": zh_tw_score},
+            table_name="subcategory_table_taiwan_zh_tw",
+        )
+        if "汎用的言語性能(GLP)_AVG" in leaderboard_dict and not np.isnan(leaderboard_dict["汎用的言語性能(GLP)_AVG"]):
+            leaderboard_dict["汎用的言語性能(GLP)_AVG"] = np.mean(
+                [leaderboard_dict["汎用的言語性能(GLP)_AVG"], zh_tw_score]
+            )
+        else:
+            leaderboard_dict["汎用的言語性能(GLP)_AVG"] = zh_tw_score
     
     # 総合スコア
     if GLP_flag and ALT_flag:
@@ -658,6 +722,17 @@ def evaluate():
         weighted_sum = sum(weight_1_scores) * 1 + sum(weight_2_scores) * 2
         
         leaderboard_dict["TOTAL_SCORE"] = weighted_sum / total_weight if total_weight > 0 else float('nan')
+    elif "汎用的言語性能(GLP)_AVG" in leaderboard_dict and not np.isnan(leaderboard_dict.get("汎用的言語性能(GLP)_AVG", float('nan'))):
+        leaderboard_dict["TOTAL_SCORE"] = leaderboard_dict["汎用的言語性能(GLP)_AVG"]
+
+    # ZH-board weighted scoring: if zh_board_v1_spec exists, recompute with parameterized weights
+    zh_board_benchmarks = ['tmmluplus', 'cbbq_zh']
+    if any(additional_flags.get(b, False) for b in zh_board_benchmarks):
+        try:
+            compute_zh_scores(leaderboard_dict)
+            print("ZH board: scores recomputed with parameterized weights from zh_board_v1_spec.yaml")
+        except FileNotFoundError:
+            print("ZH board: zh_board_v1_spec.yaml not found, using inline scores")
 
     # ========== データセット別の平均値 ==========
     if GLP_flag or ALT_flag:
@@ -677,7 +752,7 @@ def evaluate():
     first_cols = ["model_name", "model_size_category", "base_model"]
 
     # 総合スコアの列
-    if GLP_flag and ALT_flag:
+    if "TOTAL_SCORE" in leaderboard_dict:
         first_cols.append("TOTAL_SCORE")
     
     # GLPの階層構造テーブルの作成
@@ -742,6 +817,14 @@ def evaluate():
         glp_cols.extend(["GLP_意味解析", "GLP_構文解析"])
         # アプリケーション開発の詳細
         glp_cols.extend(["GLP_コーディング", "GLP_関数呼び出し"])
+    if additional_flags.get('tmmluplus', False):
+        if "汎用的言語性能(GLP)_AVG" not in glp_cols:
+            glp_cols.append("汎用的言語性能(GLP)_AVG")
+        glp_cols.append("GLP_繁中知識推理(TMMLU+)")
+    if additional_flags.get('taiwan_zh_tw', False):
+        if "汎用的言語性能(GLP)_AVG" not in glp_cols:
+            glp_cols.append("汎用的言語性能(GLP)_AVG")
+        glp_cols.append("GLP_繁體中文")
     
     # ALTの列を追加
     alt_cols = []
@@ -753,6 +836,10 @@ def evaluate():
             "ALT_制御性", "ALT_倫理・道徳", "ALT_毒性",
             "ALT_バイアス", "ALT_真実性", "ALT_堅牢性"
         ])
+    if additional_flags.get('cbbq_zh', False):
+        if "アラインメント(ALT)_AVG" not in alt_cols:
+            alt_cols.append("アラインメント(ALT)_AVG")
+        alt_cols.append("ALT_偏見公平(CBBQ)")
     
     # データセット別の平均値の列
     dataset_cols = []
